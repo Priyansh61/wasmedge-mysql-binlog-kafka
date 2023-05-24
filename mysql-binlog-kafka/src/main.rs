@@ -30,52 +30,53 @@ impl KafkaProducer {
         }
     }
 
-    async fn create_topic(&mut self, topic_name: &str) {
-        let topics = self.client.list_topics().await.unwrap();
-
-        for topic in topics {
-            if topic.name.eq(&topic_name.to_string()) {
-                self.topic = Some(topic_name.to_string());
-                println!("Topic already exist in Kafka");
-                return;
-            }
-        }
-
-        let controller_client = self.client
-            .controller_client()
-            .expect("Couldn't create controller client kafka");
-        controller_client
-            .create_topic(
-                topic_name,
-                1, // partitions
-                1, // replication factor
-                5_000 // timeout (ms)
-            ).await
-            .unwrap();
-        self.topic = Some(topic_name.to_string());
-    }
-
-    // async fn create_topic(&nut self, database_name: &str, table_name: &str) {
-    //     let topic_name = format!("{}.{}", database_name, table_name);
+    // async fn create_topic(&mut self, topic_name: &str) {
     //     let topics = self.client.list_topics().await.unwrap();
 
     //     for topic in topics {
     //         if topic.name.eq(&topic_name.to_string()) {
     //             self.topic = Some(topic_name.to_string());
     //             println!("Topic already exist in Kafka");
-    //             return
+    //             return;
     //         }
     //     }
 
-    //     let controller_client = self.client.controller_client().expect("Couldn't create controller client kafka");
-    //     controller_client.create_topic(
-    //         &topic_name,
-    //         1,      // partitions
-    //         1,      // replication factor
-    //         5_000,  // timeout (ms)
-    //     ).await.unwrap();
+    //     let controller_client = self.client
+    //         .controller_client()
+    //         .expect("Couldn't create controller client kafka");
+    //     controller_client
+    //         .create_topic(
+    //             topic_name,
+    //             1, // partitions
+    //             1, // replication factor
+    //             5_000 // timeout (ms)
+    //         ).await
+    //         .unwrap();
     //     self.topic = Some(topic_name.to_string());
     // }
+
+    async fn create_topic(&mut self, database_name: &str, table_name: &str) {
+        let topic_name = format!("{}.{}", database_name, table_name);
+        let topics = self.client.list_topics().await.unwrap();
+
+        for topic in topics {
+            if topic.name.eq(&topic_name.to_string()) {
+                self.topic = Some(topic_name.to_string());
+                println!("{}", topic_name);
+                println!("Topic already exist in Kafka");
+                return
+            }
+        }
+
+        let controller_client = self.client.controller_client().expect("Couldn't create controller client kafka");
+        controller_client.create_topic(
+            &topic_name,
+            1,      // partitions
+            1,      // replication factor
+            5_000,  // timeout (ms)
+        ).await.unwrap();
+        self.topic = Some(topic_name.to_string());
+    }
 
     fn create_record(&self, headers: String, value: String) -> Record {
         Record {
@@ -226,9 +227,9 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
     let kafka_url = std::env::var("KAFKA_URL").unwrap();
     let mut kafka_producer = KafkaProducer::connect(kafka_url).await;
     println!("Connected to kafka server");
-    kafka_producer.create_topic("mysql_binlog_events").await;
-    let partitionClient = kafka_producer.get_partition_client(0).await.unwrap();
-    let mut partition_offset = partitionClient.get_offset(OffsetAt::Latest).await.unwrap();
+    // kafka_producer.create_topic("mysql_binlog_events").await;
+    // let partitionClient = kafka_producer.get_partition_client(0).await.unwrap();
+    // let mut partition_offset = partitionClient.get_offset(OffsetAt::Latest).await.unwrap();
 
     for result in client.replicate()? {
         let (header, event) = result?;
@@ -237,31 +238,39 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
         println!("table_name: {:?}", table_name);
         println!("table_names: {:?}", table_names);
 
-        if ( table_name != None && table_names.contains(&table_name.unwrap().as_str()) ) {
+        if ( table_name != None && table_names.contains(&table_name.clone().unwrap().as_str()) ) {
             let json_event = serde_json
                 ::to_string(&event)
                 .expect("Couldn't convert sql event to json");
             let json_header = serde_json
                 ::to_string(&header)
                 .expect("Couldn't convert sql header to json");
+            let table_name_string = table_name.clone().unwrap();
 
             println!("Header: {}", json_header);
             println!("Event: {}", json_event);
             // let kafka_record = kafka_producer.create_record(json_header,json_event);
-            // let database_name = mysql_database;
+            let database_name = "MySQL";
+            kafka_producer.create_topic(database_name,&table_name_string).await;
+            let topic_name = format!("{}.{}",database_name,&table_name_string);
+            let partition_client = kafka_producer.get_partition_client(0)
+                .await
+                .unwrap_or_else(|| panic!("Couldn't fetch partition client for topic {}",topic_name));
+
+            let mut partition_offset = partition_client.get_offset(OffsetAt::Latest).await.unwrap();
 
             let kafka_record = kafka_producer.create_record(json_header, json_event);
-            // kafka_producer.create_topic(database_name.as_str(),table_name.as_str()).await;
+            // kafka_producer.create_topic(database_name.as_str(),&table_name.unwrap().as_str()).await;
 
-            // let topic_name = format!("{}.{}",database_name,table_name);
+            // let topic_name = format!("{}.{}",database_name,&table_name.unwrap().as_str());
             // let partitionClient = kafka_producer.get_partition_client(0)
             //     .await
             //     .unwrap_or_else(|| panic!("Couldn't fetch partition client for topic {}",topic_name));
 
-            partitionClient.produce(vec![kafka_record], Compression::default()).await.unwrap();
+            partition_client.produce(vec![kafka_record], Compression::default()).await.unwrap();
 
             // Consumer
-            let (records, high_watermark) = partitionClient
+            let (records, high_watermark) = partition_client
                 .fetch_records(
                     partition_offset, // offset
                     1..100_000, // min..max bytes
