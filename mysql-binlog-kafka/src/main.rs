@@ -178,7 +178,7 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
     std::env::set_var("SQL_HOSTNAME", "localhost");
     std::env::set_var("SQL_DATABASE", "mysql");
     std::env::set_var("KAFKA_URL", "localhost:9092");
-    let table_names_env = std::env::var("TABLE_NAMES").unwrap_or_else(|_| String::from("payment"));
+    let table_names_env = std::env::var("TABLE_NAMES").unwrap_or_else(|_| String::from("customer"));
     let table_names = table_names_env.split(",").collect::<Vec<&str>>();
 
     let sleep_time: u64 = std::env::var("SLEEP_TIME").unwrap().parse().unwrap();
