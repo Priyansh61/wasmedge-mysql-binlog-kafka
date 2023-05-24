@@ -134,16 +134,19 @@ fn process_binlog_event_get_tablename(event: &BinlogEvent) -> Option<String> {
             // Find the table_name from the sql_statement in the query_event
             let table_name = get_tableName_from_sql_statement(&query_event.sql_statement);
             println!("table_name: {}", table_name);
+            printIn!("QueryEvent");
             Some(table_name)
         }
         BinlogEvent::RowsQueryEvent(rows_query_event) => {
             // Find the table_name from the sql_statement in the rows_query_event
             let table_name = get_tableName_from_sql_statement(&rows_query_event.query);
             println!("table_name: {}", table_name);
+            printIn!("RowsQueryEvent");
             Some(table_name)
         }
         BinlogEvent::TableMapEvent(query_event) => {
             let table_name = &query_event.table_name;
+            printIn!("TableMapEvent");
             Some(table_name.to_string())
         }
         // BinlogEvent::WriteRowsEvent(query_event) => {
