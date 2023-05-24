@@ -241,8 +241,10 @@ As we can see from the above screenshot, that no logs are generated when we chec
 ## Possible Solution :
 I have come up with a proposed solution, we will be starting the log track on a generation of query event, then using the header in the binlog we will check for the next binlog. This will keep on happening untill we reach the commit transaction (xid event). This way we will be able to keep track of all the changes related to a table not just the Query Event.
 
-## NOTE :
-Reviews on the above approach would be really helpful I would like to know whether we can do this, or if there's a better way to achieve the same thing.
+## NOTE FOR MENTORS :
+I really enjoyed working on this and had so much fun last few days. Your reviews on the above approach would be really helpful I would like to know whether we can do this, or if there's a better way to achieve the same thing.
+
+Additionaly, please let me know about the drawback I have mentioned regarding the approach. And if my proposed solution is the right way to get it resolveed 😄
 
 THANKS
   
