@@ -15,6 +15,8 @@ pub struct UpdateRowsEvent {
     /// Gets id of the table where rows were updated
     pub table_id: u64,
 
+    pub table_name: String,
+
     /// Gets <a href="https://mariadb.com/kb/en/rows_event_v1/#flags">flags</a>
     pub flags: u16,
 
@@ -48,8 +50,10 @@ impl UpdateRowsEvent {
             &columns_before_update,
             &columns_after_update,
         )?;
+        let table_name = table_map.get(&table_id).unwrap().table_name.clone();
         Ok(Self {
             table_id,
+            table_name,
             flags,
             columns_number,
             columns_before_update,

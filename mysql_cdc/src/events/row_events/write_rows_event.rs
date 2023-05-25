@@ -14,6 +14,8 @@ pub struct WriteRowsEvent {
     /// Gets id of the table where rows were inserted
     pub table_id: u64,
 
+    pub table_name: String,
+
     /// Gets <a href="https://mariadb.com/kb/en/rows_event_v1/#flags">flags</a>
     pub flags: u16,
 
@@ -36,9 +38,11 @@ impl WriteRowsEvent {
     ) -> Result<Self, Error> {
         let (table_id, flags, columns_number) = parse_head(cursor, row_event_version)?;
         let columns_present = read_bitmap_little_endian(cursor, columns_number)?;
+        let table_name = table_map.get(&table_id).unwrap().table_name.clone();
         let rows = parse_row_data_list(cursor, table_map, table_id, &columns_present)?;
         Ok(Self {
             table_id,
+            table_name,
             flags,
             columns_number,
             columns_present,

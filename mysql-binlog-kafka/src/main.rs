@@ -30,31 +30,6 @@ impl KafkaProducer {
         }
     }
 
-    // async fn create_topic(&mut self, topic_name: &str) {
-    //     let topics = self.client.list_topics().await.unwrap();
-
-    //     for topic in topics {
-    //         if topic.name.eq(&topic_name.to_string()) {
-    //             self.topic = Some(topic_name.to_string());
-    //             println!("Topic already exist in Kafka");
-    //             return;
-    //         }
-    //     }
-
-    //     let controller_client = self.client
-    //         .controller_client()
-    //         .expect("Couldn't create controller client kafka");
-    //     controller_client
-    //         .create_topic(
-    //             topic_name,
-    //             1, // partitions
-    //             1, // replication factor
-    //             5_000 // timeout (ms)
-    //         ).await
-    //         .unwrap();
-    //     self.topic = Some(topic_name.to_string());
-    // }
-
     async fn create_topic(&mut self, database_name: &str, table_name: &str) {
         let topic_name = format!("{}.{}", database_name, table_name);
         let topics = self.client.list_topics().await.unwrap();
@@ -62,8 +37,7 @@ impl KafkaProducer {
         for topic in topics {
             if topic.name.eq(&topic_name.to_string()) {
                 self.topic = Some(topic_name.to_string());
-                println!("{}", topic_name);
-                println!("Topic already exist in Kafka");
+                println!("Topic already exist in Kafka : {} ", topic_name);
                 return
             }
         }
@@ -76,6 +50,7 @@ impl KafkaProducer {
             5_000,  // timeout (ms)
         ).await.unwrap();
         self.topic = Some(topic_name.to_string());
+        println!("Topic created in Kafka : {} ", topic_name);
     }
 
     fn create_record(&self, headers: String, value: String) -> Record {
@@ -147,21 +122,21 @@ fn process_binlog_event_get_tablename(event: &BinlogEvent) -> Option<String> {
             println!("Event::TableMapEvent and table_name: {}", table_name);
             Some(table_name.to_string())
         }
-        // BinlogEvent::WriteRowsEvent(query_event) => {
-        //     println!("WriteRowsEvent");
-        //     let table_name = &query_event.table_id;
-        //     Some(table_name)
-        // }
-        // BinlogEvent::UpdateRowsEvent(query_event) => {
-        //     println!("UpdateRowsEvent");
-        //     let table_name = &query_event.table_id;
-        //     Some(table_name)
-        // }
-        // BinlogEvent::DeleteRowsEvent(query_event) => {
-        //     println!("DeleteRowsEvent");
-        //     let table_name = &query_event.table_id;
-        //     Some(table_name)
-        // }
+        BinlogEvent::WriteRowsEvent(query_event) => {
+            println!("WriteRowsEvent");
+            let table_name = &query_event.table_name;
+            Some(table_name.to_string())
+        }
+        BinlogEvent::UpdateRowsEvent(query_event) => {
+            println!("UpdateRowsEvent");
+            let table_name = &query_event.table_name;
+            Some(table_name.to_string())
+        }
+        BinlogEvent::DeleteRowsEvent(query_event) => {
+            println!("DeleteRowsEvent");
+            let table_name = &query_event.table_name;
+            Some(table_name.to_string())
+        }
         _ => {
             println!("Event not related to specific table modification");
             None
@@ -178,7 +153,7 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
     std::env::set_var("SQL_HOSTNAME", "localhost");
     std::env::set_var("SQL_DATABASE", "mysql");
     std::env::set_var("KAFKA_URL", "localhost:9092");
-    let table_names_env = std::env::var("TABLE_NAMES").unwrap_or_else(|_| String::from("customer"));
+    let table_names_env = std::env::var("TABLE_NAMES").unwrap_or_else(|_| String::from("payment"));
     let table_names = table_names_env.split(",").collect::<Vec<&str>>();
 
     let sleep_time: u64 = std::env::var("SLEEP_TIME").unwrap().parse().unwrap();
@@ -236,8 +211,6 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
         let (header, event) = result?;
 
         let table_name = process_binlog_event_get_tablename(&event);
-        println!("table_name: {:?}", table_name);
-        println!("table_names: {:?}", table_names);
 
         if ( table_name != None && table_names.contains(&table_name.clone().unwrap().as_str()) ) {
             let json_event = serde_json
@@ -248,9 +221,9 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
                 .expect("Couldn't convert sql header to json");
             let table_name_string = table_name.clone().unwrap();
 
+            println!("table_name_string: {}", table_name_string);
             println!("Header: {}", json_header);
             println!("Event: {}", json_event);
-            // let kafka_record = kafka_producer.create_record(json_header,json_event);
             let database_name = "MySQL";
             kafka_producer.create_topic(database_name,&table_name_string).await;
             let topic_name = format!("{}.{}",database_name,&table_name_string);
@@ -261,12 +234,6 @@ async fn main() -> Result<(), mysql_cdc::errors::Error> {
             let mut partition_offset = partition_client.get_offset(OffsetAt::Latest).await.unwrap();
 
             let kafka_record = kafka_producer.create_record(json_header, json_event);
-            // kafka_producer.create_topic(database_name.as_str(),&table_name.unwrap().as_str()).await;
-
-            // let topic_name = format!("{}.{}",database_name,&table_name.unwrap().as_str());
-            // let partitionClient = kafka_producer.get_partition_client(0)
-            //     .await
-            //     .unwrap_or_else(|| panic!("Couldn't fetch partition client for topic {}",topic_name));
 
             partition_client.produce(vec![kafka_record], Compression::default()).await.unwrap();
 
