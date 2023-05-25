@@ -32,8 +32,9 @@ Sends binlog json events to apache kafka
     - UpdateRow Event
   - This will enable us to get information about the table
 - We process all the binlogs through the given funtion 
-  ```rust
- fn process_binlog_event_get_tablename(event: &BinlogEvent) -> Option<String> {
+
+``` rust
+fn process_binlog_event_get_tablename(event: &BinlogEvent) -> Option<String> {
     match event {
         BinlogEvent::QueryEvent(query_event) => {
             // Find the table_name from the sql_statement in the query_event
@@ -73,6 +74,7 @@ Sends binlog json events to apache kafka
         }
     }
 }
+  
 ```
 
 ``` rust
