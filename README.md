@@ -33,7 +33,7 @@ Sends binlog json events to apache kafka
   - This will enable us to get information about the table
 - We process all the binlogs through the given funtion 
   ```rust
-  fn process_binlog_event_get_tablename(event: &BinlogEvent) -> Option<String> {
+ fn process_binlog_event_get_tablename(event: &BinlogEvent) -> Option<String> {
     match event {
         BinlogEvent::QueryEvent(query_event) => {
             // Find the table_name from the sql_statement in the query_event
@@ -54,26 +54,26 @@ Sends binlog json events to apache kafka
         }
         BinlogEvent::WriteRowsEvent(query_event) => {
             println!("WriteRowsEvent");
-            let table_name = &query_event.table_id;
-            Some(table_name)
+            let table_name = &query_event.table_name;
+            Some(table_name.to_string())
         }
         BinlogEvent::UpdateRowsEvent(query_event) => {
             println!("UpdateRowsEvent");
-            let table_name = &query_event.table_id;
-            Some(table_name)
+            let table_name = &query_event.table_name;
+            Some(table_name.to_string())
         }
         BinlogEvent::DeleteRowsEvent(query_event) => {
             println!("DeleteRowsEvent");
-            let table_name = &query_event.table_id;
-            Some(table_name)
+            let table_name = &query_event.table_name;
+            Some(table_name.to_string())
         }
         _ => {
             println!("Event not related to specific table modification");
             None
         }
     }
-
-  ```
+}
+```
 
 ``` rust
 fn get_tableName_from_sql_statement(sql_statement: &str) -> String {
@@ -103,7 +103,7 @@ fn get_tableName_from_sql_statement(sql_statement: &str) -> String {
     table_name
 } 
   ```
-- This is how we take out the name from the Binlog Event. But wait, we have a problem some of the events such as WriteRow Event, UpdateRow Event do not have table_name defined, they just have table_id. This can be achieved by using the TableMap event used in their crates to get the table name but this will need some modification in the current package. So I have commented out the code currently and will do it in the near future.
+- This is how we take out the name from the Binlog Event. But wait, to filter events such as WriteRow Event, UpdateRow Event do not have table_name defined, they just have table_id. This can be achieved by using the TableMap event used in their crates to get the table name, I have modified the files to incorporate the table_name in themselves.
 - We have stored the tablenames to filter in the env as shown below
 
 ``` rust
