@@ -220,8 +220,7 @@ We will be using the same insert.wasm and changing the table_name for which we n
   
 The logs in the workflows
   
-![image](https://github.com/Priyansh61/wasmedge-mysql-binlog-kafka/assets/96513964/de7ddfac-13dd-4ad7-8b7a-a6f45efa8015)
-  
+![image](https://github.com/Priyansh61/wasmedge-mysql-binlog-kafka/assets/96513964/929398ff-b502-449f-86e6-e7c4ad7ced60)  
 ### Checking for the Customer Table:
   
 ![image](https://github.com/Priyansh61/wasmedge-mysql-binlog-kafka/assets/96513964/cdc3767b-a198-4489-a06c-0296c4b82712)
